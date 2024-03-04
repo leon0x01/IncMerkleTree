@@ -28,3 +28,40 @@ pub struct IncrementalMerkleTree<const HEIGHT: usize>{
     /// the leaves will be recomputed during proof generation if it is invalid.
     cache_valid: bool,
 }
+
+impl<const HEIGHT: usize> Default for IncrementalMerkleTree<HEIGHT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
+    /// Create a new [IncrementalMerkleTree] with a height of `height`. This function precompute the zero hashes
+    /// for the tree
+    pub fn new() -> Self {
+        let mut zero_hashes = [B256::default(); HEIGHT];
+        let mut hash_buf = [0u8; 64];
+        (1..HEIGHT).for_each(|height| {
+            /// copy the first32 bytes of data from `zero_hashes[height-1]` into the first 32 bytes of hash_buf
+            /// it is concatinating and generating parent node
+            hash_buf[..32].copy_from_slice(zero_hashes[height-1].as_slice());
+            /// copy the entire content of `zero_hashes[height-1]` into the second half of 
+            /// `hash_buf`, starting from the index 32
+            hash_buf[32..].copy_from_slice(zero_hashes[height-1].as_slice());
+            /// it  calculates a new hash using `keccak256` and assinge to zero_hashes[height]
+            zero_hashes[height] = keccak256(hash_buf);
+        });
+        // assigned the default value for each element of vector
+        // convert the HEIGHT as u32-bit integer
+        // `(1 << (HEIGHT as u32 +1)` converts teh variable `HEIGHT` to an unsigned 32-bit integer
+        // and subtract the 1 from this result gives the final size of the vector
+        let intermediates = vec![B256::default(); (1 << (HEIGHT as u32 +1)) - 1];
+        Self {
+            zero_hashes, 
+            active_branch: [B256::default(); HEIGHT],
+            size: 0, 
+            intermediates,
+            cache_valid:false,
+        }
+    }
+}
