@@ -64,4 +64,24 @@ impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
             cache_valid:false,
         }
     }
+    /// Compute the root hash of the tree from the active branch.
+    ///
+    /// # Returns
+    /// - The root hash of the tree.
+    pub fn root(&self) -> B256 {
+        let mut size = self.size;
+        let mut hash_buf = [0u8; 64];
+        (0..HEIGHT).fold(B256::default(), |tree_root, height| {
+            if size & 1 == 1 {
+                hash_buf[..32].copy_from_slice(self.active_branch[height].as_slice());
+                hash_buf[32..].copy_from_slice(tree_root.as_slice());
+            } else {
+                hash_buf[..32].copy_from_slice(tree_root.as_slice());
+                hash_buf[32..].copy_from_slice(self.zero_hashes[height].as_slice());
+            }
+            size >>= 1;
+            keccak256(hash_buf)
+        })
+    }
+
 }
