@@ -121,8 +121,20 @@ impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
         let mut hash_buf = [0u8; 64];
         for height in 0..HEIGHT {
             if size & 1 == 1 {
-                
+                // Set the branch value at the current height to the intermediate hash and return.
+                self.active_branch[height] = intermediate;
+
+                // Add the leaf to the intermediates and invalidate the global cache.
+                self.intermediates[(1 << HEIGHT) + self.size - 2] = leaf;
+                self.cache_valid = false;
+
+                return Ok(());
+            }
+
+            hash_buf[..32].copy_from_slice(self.active_branch[height].as_slice());
+            hash_buf[32..].copy_from_slice(intermediate.as_slice());
+            intermediate = keccak256(hash_buf);
+            size >>= 1; 
             }
         }
     }
-}
