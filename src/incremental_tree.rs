@@ -103,21 +103,20 @@ impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
 /// -  `Err(IncrementalMerkleTreeError::TreeFull)`  - If the tree is full and cannot accept any more leaves
 /// -  `Err(IncrementalMerkletTreeError::LoopDidNotTerminate)` - If the loop did not terminate after at most `height` iterations.
 
-    pub fn append(&mut self, leaf: B256) -> Result<(), IncrementalMerketTreeError> {
+        pub fn append(&mut self, leaf: B256) -> Result<(), IncrementalMerkleTreeError> {
         // Increment the leaves by 1 prior to appending the leaf.
-        self.size +=1;
+        self.size += 1;
         let mut size = self.size;
 
-        // Do not allow for appending more leaves the merkle tree can support. The incremental 
-        // merkle tree alogrithm only supports 2**HEIGHT - 1 leaves, the right most leaf must always be
-        // kept empty 
-
-        if size > ( 1 << HEIGHT ) - 1 {
+        // Do not allow for appending more leaves than the merkle tree can support. The incremental merkle tree
+        // algorithm only supports 2**HEIGHT - 1 leaves, the right most leaf must always be kept empty.
+        // Reference: https://daejunpark.github.io/papers/deposit.pdf - Page 10, Section 5.1.
+        if size > (1 << HEIGHT) - 1 {
             return Err(IncrementalMerkleTreeError::TreeFull);
         }
 
-        // Apppend the leaf by computing the new active branch 
-        let mut intermediate = leaf; 
+        // Append the leaf by computing the new active branch.
+        let mut intermediate = leaf;
         let mut hash_buf = [0u8; 64];
         for height in 0..HEIGHT {
             if size & 1 == 1 {
@@ -134,7 +133,9 @@ impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
             hash_buf[..32].copy_from_slice(self.active_branch[height].as_slice());
             hash_buf[32..].copy_from_slice(intermediate.as_slice());
             intermediate = keccak256(hash_buf);
-            size >>= 1; 
-            }
+            size >>= 1;
         }
+
+        Err(IncrementalMerkleTreeError::LoopDidNotTerminate)
     }
+}
