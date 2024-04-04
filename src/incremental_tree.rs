@@ -68,21 +68,32 @@ impl<const HEIGHT: usize> IncrementalMerkleTree<HEIGHT> {
     ///
     /// # Returns
     /// - The root hash of the tree.
+    
     pub fn root(&self) -> B256 {
-        let mut size = self.size;
-        let mut hash_buf = [0u8; 64];
-        (0..HEIGHT).fold(B256::default(), |tree_root, height| {
-            if size & 1 == 1 {
-                hash_buf[..32].copy_from_slice(self.active_branch[height].as_slice());
-                hash_buf[32..].copy_from_slice(tree_root.as_slice());
-            } else {
-                hash_buf[..32].copy_from_slice(tree_root.as_slice());
-                hash_buf[32..].copy_from_slice(self.zero_hashes[height].as_slice());
-            }
-            size >>= 1;
-            keccak256(hash_buf)
-        })
-    }
+    // Initialize variables for size and hash buffer
+    let mut size = self.size;
+    let mut hash_buf = [0u8; 64];
+    
+    // Iterate over the tree height and fold the results
+    (0..HEIGHT).fold(B256::default(), |tree_root, height| {
+        // Check if the current size is odd
+        if size & 1 == 1 {
+            // Copy active branch and tree root into hash buffer
+            hash_buf[..32].copy_from_slice(self.active_branch[height].as_slice());
+            hash_buf[32..].copy_from_slice(tree_root.as_slice());
+        } else {
+            // Copy tree root and zero hashes into hash buffer
+            hash_buf[..32].copy_from_slice(tree_root.as_slice());
+            hash_buf[32..].copy_from_slice(self.zero_hashes[height].as_slice());
+        }
+        
+        // Right shift the size by 1
+        size >>= 1;
+        
+        // Calculate keccak256 hash of the buffer
+        keccak256(hash_buf)
+    })
+}
 
     pub fn append(&mut self, leaf: B256) -> Result<(), IncrementalMerkelTreeError> {
         self.size += 1; 
